@@ -1,11 +1,10 @@
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from langchain_community.tools import DuckDuckGoSearchRun
-from langchain.tools import Tool
-from langchain.agents import AgentExecutor, create_react_agent
-from langchain import hub
+from langchain_core.tools import Tool
+from langgraph.prebuilt import create_react_agent
 
 load_dotenv()
 
@@ -23,6 +22,8 @@ def tool_rag(query):
     docs = vectorstore.similarity_search(query, k=3)
     return "\n\n".join([doc.page_content for doc in docs])
 
+buscador_web = DuckDuckGoSearchRun()
+
 herramientas = [
     Tool(
         name="buscar_en_documento",
@@ -33,7 +34,7 @@ herramientas = [
     ),
     Tool(
         name="buscar_en_internet",
-        func=DuckDuckGoSearchRun(),
+        func=buscador_web.invoke,
         description="Útil como segunda opción si la información no está en el documento local."
     )
 ]
@@ -41,7 +42,7 @@ herramientas = [
 # guardarrail
 
 def es_relevante(pregunta):
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
     
     tema = "sensores inerciales, biomecánica y seguimiento del movimiento articular"
     
@@ -63,9 +64,8 @@ def es_relevante(pregunta):
     return respuesta == "relevante"
 
 # creacion del agente
-llm_agente = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+llm_agente = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
 # Obtenemos un prompt estándar para agentes ReAct
-prompt_react = hub.pull("hwchase17/react")
 instrucciones_experto = """
 Eres un asistente experto en biomecánica, sensores inerciales y seguimiento del movimiento articular.
 Tu objetivo es responder de forma rigurosa y técnica.
@@ -75,9 +75,8 @@ REGLAS ESTRICTAS:
 2. Si la información no está ahí, usa 'buscar_en_internet'.
 3. OBLIGATORIO: Al final de tu respuesta, debes indicar claramente la fuente usada escribiendo "[Fuente: Documento Local]" o "[Fuente: Internet]".
 """
-prompt_react.template = instrucciones_experto + "\n\n" + prompt_react.template
-agente = create_react_agent(llm_agente, herramientas, prompt_react)
-agente_executor = AgentExecutor(agent=agente, tools=herramientas, verbose=True, handle_parsing_errors=True)
+
+agente = create_react_agent(llm_agente, tools=herramientas, prompt=instrucciones_experto)
 
 # STREAMLIT - interfaz
 if "messages" not in st.session_state:
@@ -103,9 +102,10 @@ if prompt := st.chat_input("¿Qué quieres saber?"):
             # El Agente decide qué hacer
             with st.spinner("Pensando..."):
                 # Usamos un expander para mostrar el razonamiento (Chain of Thought)
-                with st.expander("Ver razonamiento del agente"):
-                    resultado = agente_executor.invoke({"input": prompt})
-                    respuesta_final = resultado["output"]
+                with st.expander("Ver razonamiento del agente"):             
+                    inputs = {"messages": st.session_state.messages}
+                    resultado = agente.invoke(inputs)
+                    respuesta_final = resultado["messages"][-1].content
             
             st.markdown(respuesta_final)
     
