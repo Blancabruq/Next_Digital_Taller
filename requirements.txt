@@ -1,0 +1,15 @@
+langchain
+langchain-openai
+langchain-community
+langchain-core
+langchain-classic
+langchain-chroma
+langchain-text-splitters
+langgraph
+tiktoken
+python-dotenv
+pypdf
+streamlit
+fpdf2
+googlesearch-python
+numpy
