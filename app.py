@@ -9,8 +9,8 @@ from langgraph.prebuilt import create_react_agent
 load_dotenv()
 
 
-st.set_page_config(page_title="Agente Experto", layout="centered")
-st.title("Agente Especializado")
+st.set_page_config(page_title="Agente Experto en Biomecánica", layout="centered")
+st.title("Agente Especializado en Biomecánica")
 
 # Cargamos la base de datos que creamos con ingestion.py
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
